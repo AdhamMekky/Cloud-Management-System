@@ -1,0 +1,7 @@
+{
+    "vm_name": "config_vm",
+    "ram_mb": 1024,
+    "cpu_cores": 2,
+    "disk_size_gb": 10,
+    "iso_path": ""
+}
