@@ -32,14 +32,14 @@ def vm_menu():
     print("\n--- VM Operations ---")
     print("1. Create VM (Interactive)")
     print("2. Create VM (From Config File)")
-    print("9. Back to Main Menu")
+    print("0. Back to Main Menu")
     
     choice = input("Select operation: ")
     if choice == '1':
         vm_manager.create_vm_interactive()
     elif choice == '2':
         vm_manager.create_vm_from_config()  
-    elif choice == '9':
+    elif choice == '0':
         return
     else:
         print("Invalid choice.")
@@ -51,9 +51,9 @@ def docker_menu():
     print("3. List Docker Images")
     print("4. List Running Containers")
     print("5. Stop a Container")            
-    print("7. Search Image (DockerHub)")
-    print("8. Pull Image")
-    print("9. Back to Main Menu")
+    print("6. Search Image (DockerHub)")
+    print("7. Pull Image")
+    print("0. Back to Main Menu")
     
     choice = input("Select operation: ")
 
@@ -67,11 +67,11 @@ def docker_menu():
         docker_manager.list_containers()
     elif choice == '5':                     
         docker_manager.stop_container()
-    elif choice == '7':                     
+    elif choice == '6':                     
         docker_manager.search_dockerhub()
-    elif choice == '8':
+    elif choice == '7':
         docker_manager.pull_image()
-    elif choice == '9':
+    elif choice == '0':
         return
     else:
         print("Feature coming in the next step!")
