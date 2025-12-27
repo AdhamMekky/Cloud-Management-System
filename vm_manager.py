@@ -2,6 +2,12 @@ import os
 import subprocess
 import json
 
+
+
+VM_Folder = "VM_Storage"
+if not os.path.exists(VM_Folder):
+    os.makedirs(VM_Folder)
+
 def create_disk(disk_name, size_gb):
     """
     Creates a virtual hard drive using qemu-img.
@@ -12,6 +18,7 @@ def create_disk(disk_name, size_gb):
     # Ensure the name ends with .qcow2
     if not disk_name.endswith('.qcow2'):
         disk_name += '.qcow2'
+    disk_name = os.path.join(VM_Folder, disk_name)
         
     try:
         # We use subprocess to run the shell command
@@ -98,10 +105,10 @@ def create_vm_from_config():
         
         # Extract values
         name = config.get("vm_name", "default_vm")
-        ram = config.get("ram_mb", 512)
-        cpu = config.get("cpu_cores", 1)
-        disk_size = config.get("disk_size_gb", 5)
-        iso = config.get("iso_path", "")
+        ram = config.get("ram_mb", 2048)
+        cpu = config.get("cpu_cores", 4)
+        disk_size = config.get("disk_size_gb", 10)
+        iso = config.get("iso_path", "ISO_Images/ubuntu-20.04.6-desktop-amd64.iso")
         
         # Run the standard creation process
         disk_path = create_disk(name, disk_size)
