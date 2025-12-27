@@ -1,7 +1,7 @@
 {
     "vm_name": "config_vm",
-    "ram_mb": 1024,
+    "ram_mb": 2048,
     "cpu_cores": 2,
-    "disk_size_gb": 10,
-    "iso_path": ""
+    "disk_size_gb": 5,
+    "iso_path": "ISO_Images/ubuntu-20.04.6-desktop-amd64.iso"
 }

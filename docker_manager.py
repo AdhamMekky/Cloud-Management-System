@@ -1,7 +1,12 @@
 import docker
 import os
 
-# This connects Python to the Docker Service we fixed earlier
+Docker_Projects_Main = "Docker_Projects"
+
+if not os.path.exists(Docker_Projects_Main):
+    os.makedirs(Docker_Projects_Main)
+
+
 try:
     client = docker.from_env()
 except Exception as e:
@@ -86,13 +91,17 @@ def create_dockerfile():
     """Creates a Dockerfile based on user input."""
     print("\n--- Create Dockerfile ---")
     
-    # 1. Ask where to save it
-    folder = input("Enter a folder name to save this project (e.g., 'my_website'): ")
+# 1. Ask where to save it
+    folder_name = input("Enter a folder name to save this project (e.g., 'my_website'): ")
     
+    # UPDATE: Force the path to be inside Docker_Projects
+    folder_path = os.path.join(Docker_Projects_Main, folder_name)
+
     # Create the folder if it doesn't exist
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-        print(f"Created folder: {folder}")
+    full_path = os.path.join(Docker_Projects_Main, folder_name)
+    if not os.path.exists(full_path):
+        os.makedirs(full_path)
+        print(f"Created folder: {folder_path}")
     
     # 2. Get the content
     print("Enter Dockerfile instructions one by one.")
@@ -107,7 +116,7 @@ def create_dockerfile():
         lines.append(line)
     
     # 3. Write the file
-    file_path = os.path.join(folder, "Dockerfile")
+    file_path = os.path.join(Docker_Projects_Main,folder_name , "Dockerfile")
     try:
         with open(file_path, "w") as f:
             for instruction in lines:
@@ -121,10 +130,13 @@ def build_image():
     print("\n--- Build Docker Image ---")
     
     # 1. Ask for the folder containing the Dockerfile
-    path = input("Enter path to the folder with Dockerfile (e.g., 'my_website'): ")
+    folder_name = input("Enter the project folder name (e.g., 'my_website'): ")
+    
+    project_name = input("Enter project name (e.g., 'my_website'): ")
+    path = os.path.join(Docker_Projects_Main, project_name)
     
     if not os.path.exists(path):
-        print("Error: That folder does not exist.")
+        print(f"Error: The folder '{path}' does not exist.")
         return
 
     # 2. Ask for a name for the new image
