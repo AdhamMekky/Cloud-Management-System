@@ -16,7 +16,7 @@ class CloudManagerApp(ctk.CTk):
         super().__init__()
 
         # 1. WINDOW SETUP (Massive Size)
-        self.title("Cloud Management System - Final Presentation")
+        self.title("Cloud Management System")
         self.geometry("1400x900")
         # --- FONTS SETUP ---
         self.font_title = ctk.CTkFont(family="Arial", size=28, weight="bold")
@@ -251,18 +251,43 @@ class CloudManagerApp(ctk.CTk):
         tab_search = self.docker_tabs.add("Search")
 
         # ==========================================
-        # TAB 1: MANAGE
+        # TAB 1: MANAGE (List, Run, Stop)
         # ==========================================
-        ctk.CTkLabel(tab_manage, text="Container Management", font=self.font_title).pack(pady=20)
-        ctk.CTkButton(tab_manage, text="List All Images", height=50, font=self.font_button, command=self.run_docker_list_images).pack(pady=10, fill="x", padx=150)
-        ctk.CTkButton(tab_manage, text="List Running Containers", height=50, font=self.font_button, command=self.run_docker_list_containers).pack(pady=10, fill="x", padx=150)
+        ctk.CTkLabel(tab_manage, text="Container Management", font=self.font_title).pack(pady=15)
         
-        ctk.CTkFrame(tab_manage, height=2, fg_color="gray").pack(fill="x", pady=30, padx=50)
+        # 1. LIST BUTTONS
+        btn_frame = ctk.CTkFrame(tab_manage, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=100)
+        ctk.CTkButton(btn_frame, text="List All Images", height=50, font=self.font_button, command=self.run_docker_list_images).pack(side="left", fill="x", expand=True, padx=10)
+        ctk.CTkButton(btn_frame, text="List Running Containers", height=50, font=self.font_button, command=self.run_docker_list_containers).pack(side="left", fill="x", expand=True, padx=10)
+        
+        ctk.CTkFrame(tab_manage, height=2, fg_color="gray").pack(fill="x", pady=20, padx=50) # Separator
 
-        ctk.CTkLabel(tab_manage, text="Stop Container (Enter ID):", font=self.font_header).pack(pady=(20, 5))
+        # 2. RUN CONTAINER (New Section)
+        ctk.CTkLabel(tab_manage, text="Run New Container:", font=self.font_header).pack(pady=(5, 5))
+        
+        run_frame = ctk.CTkFrame(tab_manage, fg_color="transparent")
+        run_frame.pack(fill="x", padx=150, pady=5)
+        
+        # Image Name Input
+        self.entry_run_image = ctk.CTkEntry(run_frame, placeholder_text="Image Name (e.g. alpine)", height=50, font=self.font_body)
+        self.entry_run_image.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        # Container Name Input
+        self.entry_run_name = ctk.CTkEntry(run_frame, placeholder_text="Container Name (Optional)", height=50, font=self.font_body)
+        self.entry_run_name.pack(side="left", fill="x", expand=True, padx=(0, 10))
+        
+        # Run Button
+        ctk.CTkButton(run_frame, text="RUN", width=120, height=50, font=self.font_button, fg_color="green", command=self.run_docker_run).pack(side="left")
+
+        ctk.CTkFrame(tab_manage, height=2, fg_color="gray").pack(fill="x", pady=20, padx=50) # Separator
+
+        # 3. STOP CONTAINER
+        ctk.CTkLabel(tab_manage, text="Stop Container:", font=self.font_header).pack(pady=(5, 5))
         stop_frame = ctk.CTkFrame(tab_manage, fg_color="transparent")
-        stop_frame.pack(pady=10, fill="x", padx=100) 
-        self.entry_stop_id = ctk.CTkEntry(stop_frame, height=60, font=self.font_body, placeholder_text="e.g. a1b2c3d4")
+        stop_frame.pack(pady=5, fill="x", padx=150) 
+        
+        self.entry_stop_id = ctk.CTkEntry(stop_frame, height=60, font=self.font_body, placeholder_text="Enter ID or Name")
         self.entry_stop_id.pack(side="left", fill="x", expand=True)
         ctk.CTkButton(stop_frame, text="STOP CONTAINER", width=220, height=60, font=self.font_button, fg_color="#C0392B", hover_color="#922B21", command=self.run_docker_stop).pack(side="left", padx=(20, 0))
 
@@ -339,44 +364,53 @@ class CloudManagerApp(ctk.CTk):
 
     # --- DOCKER LOGIC ---
     def run_docker_list_images(self):
-        self.log("Fetching Images...")
-        try:
-            # 1. Get list from Docker
-            images = docker_manager.client.images.list()
-            
-            if not images:
-                self.log("No images found.")
-                return
+        def task():
+            try:
+                self.log(">> Fetching & Sorting Images...")
+                if not self.docker_client:
+                    self.log("Error: Docker not connected.")
+                    return
 
-            # 2. Print Header
-            self.log(f"{'REPOSITORY':<25} {'TAG':<15} {'ID':<12} {'SIZE (MB)':<10}")
-            self.log("-" * 65)
-
-            # 3. Print Rows
-            for img in images:
-                # Get size in MB
-                size_mb = f"{img.attrs['Size'] / (1024 * 1024):.1f}"
-                short_id = img.short_id.split(":")[1][:10]
+                # 1. Fetch
+                images = self.docker_client.images.list()
                 
-                # Images can have multiple tags, list them all
-                tags = img.tags if img.tags else ["<none>:<none>"]
-                for tag in tags:
-                    if ":" in tag:
-                        repo, version = tag.split(":", 1)
-                    else:
-                        repo, version = tag, "<none>"
+                # 2. Force Refresh & Sort (Newest Date First)
+                # We handle cases where 'Created' might be missing
+                images.sort(key=lambda x: x.attrs.get('Created', ''), reverse=True)
+
+                output = [f"{'REPOSITORY':<30} {'TAG':<15} {'ID':<12} {'SIZE (MB)':<10}"]
+                output.append("-" * 75)
+                
+                for img in images:
+                    # Calculate Size
+                    size_mb = f"{img.attrs['Size'] / (1024 * 1024):.1f}"
+                    short_id = img.short_id.split(":")[1][:12]
                     
-                    # Log the row to the GUI
-                    self.log(f"{repo:<25} {version:<15} {short_id:<12} {size_mb:<10}")
-                    
-        except Exception as e:
-            self.log(f"Error fetching images: {e}")
+                    # Handle Tags
+                    tags = img.tags if img.tags else ["<none>:<none>"]
+                    for tag in tags:
+                        try:
+                            if ":" in tag:
+                                repo, version = tag.split(":", 1)
+                            else:
+                                repo, version = tag, "latest"
+                        except:
+                            repo, version = tag, ""
+                        
+                        output.append(f"{repo:<30} {version:<15} {short_id:<12} {size_mb:<10}")
+                
+                self.log("\n".join(output))
+
+            except Exception as e:
+                self.log(f"Error listing images: {e}")
+
+        threading.Thread(target=task, daemon=True).start()
 
     def run_docker_list_containers(self):
         self.log("Fetching Running Containers...")
         try:
             # 1. Get list from Docker
-            containers = docker_manager.client.containers.list()
+            containers = self.docker_client.containers.list()
             
             if not containers:
                 self.log("No running containers.")
@@ -401,6 +435,33 @@ class CloudManagerApp(ctk.CTk):
                 
         except Exception as e:
             self.log(f"Error fetching containers: {e}")
+
+
+    def run_docker_run(self):
+        image = self.entry_run_image.get().strip()
+        name = self.entry_run_name.get().strip()
+        
+        if not image:
+            self.log(">> Error: Image Name is required.")
+            return
+
+        def task():
+            try:
+                self.log(f">> Running '{image}'...")
+                # detach=True runs it in background
+                args = {"image": image, "detach": True}
+                if name: args["name"] = name
+                
+                container = self.docker_client.containers.run(**args)
+                
+                self.log(f">> SUCCESS! Started: {container.name} ({container.short_id[:10]})")
+                self.log(">> (Go to 'List Running Containers' to check status)")
+
+            except Exception as e:
+                self.log(f">> Run Failed: {e}")
+
+        threading.Thread(target=task).start()
+
 
     def run_docker_stop(self):
         cid = self.entry_stop_id.get()
@@ -434,50 +495,33 @@ class CloudManagerApp(ctk.CTk):
         tag = self.entry_build_name.get().strip()
         path = self.entry_build_path.get().strip()
 
-        # 2. Input Validation (Instant Feedback)
-        if not tag:
-            self.log(">> Error: Please enter an Image Tag (e.g., test:v1).")
-            return
-        if not path:
-            self.log(">> Error: Please enter the Directory Path.")
+        if not tag or not path:
+            self.log(">> Error: Missing Tag or Path.")
             return
         
-        # 3. Path Verification (The most common fix)
-        # If user typed just "." but the file is in "Docker_Projects/TestFix1", this catches it.
-        if not os.path.exists(path):
-            self.log(f">> Error: The folder path does not exist: {path}")
-            return
-        
-        # Check specifically for the Dockerfile
         if not os.path.exists(os.path.join(path, "Dockerfile")):
-            self.log(f">> Error: No 'Dockerfile' found inside: {path}")
+            self.log(f">> Error: No Dockerfile found in {path}")
             return
 
-        # 4. Start the Build Thread
-        def thread_target():
+        def task():
             try:
-                self.log(f">> Starting build for '{tag}'...")
-                self.log(f">> Reading context from: {path}")
+                self.log(f">> Building '{tag}'... Please wait.")
                 
-                # Use low-level API to get real-time stream logs
-                response = self.docker_client.api.build(path=path, tag=tag, decode=True)
+                # FIX: Use High-Level API (Stricter & Safer)
+                # This waits until finished, then returns the image object
+                image, logs = self.docker_client.images.build(path=path, tag=tag)
                 
-                for chunk in response:
-                    if 'stream' in chunk:
-                        # Clean up the log line
-                        line = chunk['stream'].strip()
-                        if line:
-                            self.log(f"[Build] {line}")
-                    elif 'error' in chunk:
-                        self.log(f">> Build Failed: {chunk['error']}")
-                        return
+                # Check if it actually worked
+                if image:
+                    short_id = image.short_id.split(":")[1][:10]
+                    self.log(f">> SUCCESS! Built Image ID: {short_id}")
+                    self.log(f">> Tagged as: {tag}")
+                    self.log(">> (Go to 'Manage' -> 'List All Images' to see it)")
                 
-                self.log(f">> Successfully built image: {tag}")
-
             except Exception as e:
-                self.log(f">> Critical Build Error: {e}")
+                self.log(f">> Build Failed: {e}")
 
-        threading.Thread(target=thread_target, daemon=True).start()
+        threading.Thread(target=task).start()
 
     def run_docker_search(self):
         term = self.entry_search.get()
